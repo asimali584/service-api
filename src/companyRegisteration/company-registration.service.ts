@@ -76,6 +76,7 @@ export class CompanyRegistrationService {
     companyDetailsDto: CompanyDetailsDto,
     userId: number,
     image: Express.Multer.File,
+    coverImage: Express.Multer.File,
   ) {
     const user = await this.usersRepository.findOne({
       where: { id: userId, role: UserRole.COMPANY, isVerified: true },
@@ -106,20 +107,16 @@ export class CompanyRegistrationService {
     });
 
     if (!company) {
-      if (!image) {
-        throw new BadRequestException('Image is required.');
-      }
-
       company = this.companyRepository.create({
         ...companyDetailsDto,
         user,
         imageUrl: `${process.env.SERVER_URI}/${image.path}`,
+        coverImageUrl: `${process.env.SERVER_URI}/${coverImage.path}`,
       });
     } else {
       Object.assign(company, companyDetailsDto);
-      if (image) {
-        company.imageUrl = `${process.env.SERVER_URI}/${image.path}`;
-      }
+      company.imageUrl = `${process.env.SERVER_URI}/${image.path}`;
+      company.coverImageUrl = `${process.env.SERVER_URI}/${coverImage.path}`;
     }
 
     await this.companyRepository.save(company);
@@ -155,6 +152,7 @@ export class CompanyRegistrationService {
     companyPreferencesDto: CompanyPreferencesDto,
     userId: number,
     image: Express.Multer.File,
+    coverImage: Express.Multer.File,
   ) {
     const user = await this.usersRepository.findOne({
       where: { id: userId, role: UserRole.COMPANY, isVerified: true },
@@ -196,7 +194,8 @@ export class CompanyRegistrationService {
 
     await this.companyPreferenceRepository.save(companyPreference);
 
-    if (image) {
+    // Handle image updates if provided
+    if (image || coverImage) {
       let company = await this.companyRepository.findOne({
         where: { user: { id: userId } },
       });
@@ -206,11 +205,17 @@ export class CompanyRegistrationService {
           businessName: '',
           businessType: '',
           businessDescription: '',
-          imageUrl: `${process.env.SERVER_URI}/${image.path}`,
+          imageUrl: image ? `${process.env.SERVER_URI}/${image.path}` : '',
+          coverImageUrl: coverImage ? `${process.env.SERVER_URI}/${coverImage.path}` : '',
           user,
         });
       } else {
-        company.imageUrl = `${process.env.SERVER_URI}/${image.path}`;
+        if (image) {
+          company.imageUrl = `${process.env.SERVER_URI}/${image.path}`;
+        }
+        if (coverImage) {
+          company.coverImageUrl = `${process.env.SERVER_URI}/${coverImage.path}`;
+        }
       }
 
       await this.companyRepository.save(company);
@@ -219,7 +224,7 @@ export class CompanyRegistrationService {
     return { message: 'Company preferences saved successfully' };
   }
 
-  async updateCompanyPrivacy(userId: number, image: Express.Multer.File) {
+  async updateCompanyPrivacy(userId: number, image: Express.Multer.File, coverImage: Express.Multer.File) {
     const user = await this.usersRepository.findOne({
       where: { id: userId, role: UserRole.COMPANY, isVerified: true },
     });
@@ -230,8 +235,9 @@ export class CompanyRegistrationService {
       );
     }
 
-    if (!image) {
-      throw new BadRequestException('Privacy image is required');
+    // At least one image should be provided
+    if (!image && !coverImage) {
+      throw new BadRequestException('At least one image (profile or cover) is required');
     }
 
     let company = await this.companyRepository.findOne({
@@ -239,22 +245,28 @@ export class CompanyRegistrationService {
     });
 
     if (!company) {
-      // If company row doesn't exist yet, create one with the new image
+      // If company row doesn't exist yet, create one with the provided images
       company = this.companyRepository.create({
         businessName: '',
         businessType: '',
         businessDescription: '',
-        imageUrl: `${process.env.SERVER_URI}/${image.path}`,
+        imageUrl: image ? `${process.env.SERVER_URI}/${image.path}` : '',
+        coverImageUrl: coverImage ? `${process.env.SERVER_URI}/${coverImage.path}` : '',
         user,
       });
     } else {
-      // If company row exists, just update the image
-      company.imageUrl = `${process.env.SERVER_URI}/${image.path}`;
+      // If company row exists, update the provided images
+      if (image) {
+        company.imageUrl = `${process.env.SERVER_URI}/${image.path}`;
+      }
+      if (coverImage) {
+        company.coverImageUrl = `${process.env.SERVER_URI}/${coverImage.path}`;
+      }
     }
 
     await this.companyRepository.save(company);
 
-    return { message: 'Image updated successfully' };
+    return { message: 'Image(s) updated successfully' };
   }
 
   async getCompanyServices(userId: number) {
@@ -357,6 +369,7 @@ export class CompanyRegistrationService {
     return {
       businessName: company.businessName,
       imageUrl: company.imageUrl,
+      coverImageUrl: company.coverImageUrl,
     };
   }
 
@@ -383,6 +396,7 @@ export class CompanyRegistrationService {
       email: user.email,
       businessName: company.businessName,
       imageUrl: company.imageUrl,
+      coverImageUrl: company.coverImageUrl,
     };
   }
 

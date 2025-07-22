@@ -24,6 +24,9 @@ export class Company {
   @Column({ type: 'text', nullable: false })
   imageUrl: string;
 
+  @Column({ type: 'text', nullable: false })
+  coverImageUrl: string;
+
   @OneToOne(() => User, (user) => user.company, { onDelete: 'CASCADE' })
   @JoinColumn()
   user: User;
