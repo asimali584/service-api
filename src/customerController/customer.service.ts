@@ -201,7 +201,43 @@ export class CustomerService {
       });
     }
 
-    // 3️⃣ Availability filter
+    // 3️⃣ Working Days filter
+    if (filterServicesDto.workingDays) {
+      const validDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      
+      // Convert to array if it's a string (single day or comma-separated days)
+      let requestedWorkingDays: string[];
+      if (typeof filterServicesDto.workingDays === 'string') {
+        // Split by comma and trim whitespace
+        const workingDaysString = filterServicesDto.workingDays as string;
+        requestedWorkingDays = workingDaysString.split(',').map(day => day.trim());
+      } else {
+        requestedWorkingDays = [];
+      }
+      
+      // Validate requested days
+      const invalidDays = requestedWorkingDays.filter(day => !validDays.includes(day));
+      if (invalidDays.length > 0) {
+        throw new BadRequestException(`Invalid working days: ${invalidDays.join(', ')}. Valid days are: ${validDays.join(', ')}`);
+      }
+      
+      filteredServices = filteredServices.filter((service) => {
+        const companyPreference = service.user.companyPreference;
+        
+        if (!companyPreference || !companyPreference.workingDays || companyPreference.workingDays.length === 0) {
+          return false;
+        }
+        
+        // Check if any of the requested days match the company's working days
+        const hasMatchingDays = requestedWorkingDays.some(requestedDay => 
+          companyPreference.workingDays.includes(requestedDay)
+        );
+        
+        return hasMatchingDays;
+      });
+    }
+
+    // 4️⃣ Availability filter
 
     if (filterServicesDto.availability) {
       filteredServices = filteredServices.filter((service) => {

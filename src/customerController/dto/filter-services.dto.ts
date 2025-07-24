@@ -15,5 +15,9 @@ export class FilterServicesDto {
 
   @IsOptional()
   @IsString()
-  businessType?: string; // ✅ NEW
+  businessType?: string;
+
+  @IsOptional()
+  @IsString()
+  workingDays?: string; // Filter by working days (comma-separated or single day)
 }
