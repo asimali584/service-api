@@ -141,11 +141,14 @@ export class CompanyRegistrationService {
       where: { user: { id: userId } },
     });
 
-    if (!company || !company.imageUrl) {
-      return { imageUrl: null };
+    if (!company) {
+      return { imageUrl: null, coverImageUrl: null };
     }
 
-    return { imageUrl: company.imageUrl };
+    return { 
+      imageUrl: company.imageUrl || null, 
+      coverImageUrl: company.coverImageUrl || null 
+    };
   }
 
   async updateCompanyPreferences(
@@ -176,20 +179,51 @@ export class CompanyRegistrationService {
       Object.assign(companyPreference, companyPreferencesDto);
     }
 
-    // Extract day names from dates if provided
-    if (companyPreferencesDto.startDate) {
-      const start = new Date(companyPreferencesDto.startDate);
-      companyPreference.startDay = start.toLocaleDateString('en-US', {
-        weekday: 'long',
-      });
-      companyPreference.startDate = start;
+    // Validate working days if provided
+    if (companyPreferencesDto.workingDays) {
+      const validDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      
+      // Convert to array if it's a string (single day or comma-separated days)
+      let workingDaysArray: string[];
+      if (typeof companyPreferencesDto.workingDays === 'string') {
+        // Split by comma and trim whitespace
+        const workingDaysString = companyPreferencesDto.workingDays as string;
+        workingDaysArray = workingDaysString.split(',').map(day => day.trim());
+      } else if (Array.isArray(companyPreferencesDto.workingDays)) {
+        workingDaysArray = companyPreferencesDto.workingDays;
+      } else {
+        throw new BadRequestException('workingDays must be a string or array of strings');
+      }
+      
+      const invalidDays = workingDaysArray.filter(day => !validDays.includes(day));
+      
+      if (invalidDays.length > 0) {
+        throw new BadRequestException(`Invalid working days: ${invalidDays.join(', ')}. Valid days are: ${validDays.join(', ')}`);
+      }
+      
+      companyPreference.workingDays = workingDaysArray;
     }
-    if (companyPreferencesDto.endDate) {
-      const end = new Date(companyPreferencesDto.endDate);
-      companyPreference.endDay = end.toLocaleDateString('en-US', {
-        weekday: 'long',
-      });
-      companyPreference.endDate = end;
+
+    // Validate and set working hours if provided
+    if (companyPreferencesDto.startTime || companyPreferencesDto.endTime) {
+      // Validate time format (HH:MM AM/PM)
+      const timeRegex = /^(1[0-2]|0?[1-9]):([0-5][0-9])\s?(AM|PM|am|pm)$/;
+      
+      if (companyPreferencesDto.startTime && !timeRegex.test(companyPreferencesDto.startTime)) {
+        throw new BadRequestException('Invalid start time format. Use format like "9:00 AM" or "2:30 PM"');
+      }
+      
+      if (companyPreferencesDto.endTime && !timeRegex.test(companyPreferencesDto.endTime)) {
+        throw new BadRequestException('Invalid end time format. Use format like "5:00 PM" or "11:30 PM"');
+      }
+      
+      // Set the times
+      if (companyPreferencesDto.startTime) {
+        companyPreference.startTime = companyPreferencesDto.startTime;
+      }
+      if (companyPreferencesDto.endTime) {
+        companyPreference.endTime = companyPreferencesDto.endTime;
+      }
     }
 
     await this.companyPreferenceRepository.save(companyPreference);

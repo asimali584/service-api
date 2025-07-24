@@ -66,20 +66,16 @@ export class CompanyPreferencesDto {
   distanceRange: number;
 
   @IsOptional()
-  @IsString()
-  startDay: string;
+  @IsString({ each: true })
+  workingDays: string[]; // Array of days like ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
   @IsOptional()
   @IsString()
-  endDay: string;
+  startTime: string; // Time format like "9:00 AM"
 
   @IsOptional()
-  @IsDateString()
-  startDate: string;
-
-  @IsOptional()
-  @IsDateString()
-  endDate: string;
+  @IsString()
+  endTime: string; // Time format like "5:00 PM"
 }
 
 export class CreateServiceDto {

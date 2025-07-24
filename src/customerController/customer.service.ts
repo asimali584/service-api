@@ -65,20 +65,7 @@ export class CustomerService {
       relations: ['user', 'user.company', 'user.companyPreference'],
     });
 
-    const currentDate = new Date();
-    const currentDayName = currentDate.toLocaleDateString('en-US', {
-      weekday: 'long',
-    });
 
-    const daysOfWeek = [
-      'Sunday',
-      'Monday',
-      'Tuesday',
-      'Wednesday',
-      'Thursday',
-      'Friday',
-      'Saturday',
-    ];
 
     const servicesWithinRadius = services.filter((service) => {
       const companyPreference = service.user.companyPreference;
@@ -108,70 +95,37 @@ export class CustomerService {
         const companyPreference = service.user.companyPreference;
         let availability = 'Not available';
 
-        if (companyPreference) {
-          const startDay = companyPreference.startDay;
-          const endDay = companyPreference.endDay;
-          const startDate = companyPreference.startDate;
-          const endDate = companyPreference.endDate;
-
-          if (startDay && endDay && startDate && endDate) {
-            const startDayIndex = daysOfWeek.indexOf(startDay);
-            const endDayIndex = daysOfWeek.indexOf(endDay);
-            const currentDayIndex = daysOfWeek.indexOf(currentDayName);
-
-            const today = new Date(currentDate);
-            today.setHours(0, 0, 0, 0);
-
-            const start = new Date(startDate);
-            start.setHours(0, 0, 0, 0);
-
-            const end = new Date(endDate);
-            end.setHours(0, 0, 0, 0);
-
-            const isEndAfterStart = endDayIndex >= startDayIndex;
-
-            const isTodayInDayRange = isEndAfterStart
-              ? currentDayIndex >= startDayIndex &&
-                currentDayIndex <= endDayIndex
-              : currentDayIndex >= startDayIndex ||
-                currentDayIndex <= endDayIndex;
-
-            const isTodayInDateRange = start <= today && today <= end;
-
-            if (isTodayInDayRange && isTodayInDateRange) {
-              availability = 'Available Now';
-            } else {
-              // Try to find next available day within 7 days
-              let foundNext = false;
-              // Inside the for loop that finds the next available day
-              for (let i = 1; i <= 7; i++) {
-                const nextDate = new Date(today);
-                nextDate.setDate(today.getDate() + i);
-
-                const nextDayIndex = (currentDayIndex + i) % 7;
-                const nextDayName = daysOfWeek[nextDayIndex];
-
-                const isNextDayInRange = isEndAfterStart
-                  ? nextDayIndex >= startDayIndex && nextDayIndex <= endDayIndex
-                  : nextDayIndex >= startDayIndex ||
-                    nextDayIndex <= endDayIndex;
-
-                const isNextDateInRange = start <= nextDate && nextDate <= end;
-
-                if (isNextDayInRange && isNextDateInRange) {
-                  if (i === 1) {
-                    availability = `Available Tomorrow`;
-                  } else {
-                    availability = `Available ${nextDayName}`;
-                  }
-                  foundNext = true;
-                  break;
+        if (companyPreference && companyPreference.workingDays && companyPreference.workingDays.length > 0) {
+          const workingDays = companyPreference.workingDays;
+          const currentDayName = new Date().toLocaleDateString('en-US', { weekday: 'short' });
+          
+          // Check if today is a working day
+          const isTodayWorkingDay = workingDays.includes(currentDayName);
+          
+          if (isTodayWorkingDay) {
+            availability = 'Available Now';
+          } else {
+            // Try to find next available day within 7 days
+            let foundNext = false;
+            
+            for (let i = 1; i <= 7; i++) {
+              const nextDate = new Date();
+              nextDate.setDate(nextDate.getDate() + i);
+              const nextDayName = nextDate.toLocaleDateString('en-US', { weekday: 'short' });
+              
+              if (workingDays.includes(nextDayName)) {
+                if (i === 1) {
+                  availability = `Available Tomorrow`;
+                } else {
+                  availability = `Available ${nextDayName}`;
                 }
+                foundNext = true;
+                break;
               }
-
-              if (!foundNext) {
-                availability = 'Not available';
-              }
+            }
+            
+            if (!foundNext) {
+              availability = 'Not available';
             }
           }
         }
@@ -248,88 +202,43 @@ export class CustomerService {
     }
 
     // 3️⃣ Availability filter
-    const currentDate = new Date();
-    const currentDayName = currentDate.toLocaleDateString('en-US', {
-      weekday: 'long',
-    });
-
-    const daysOfWeek = [
-      'Sunday',
-      'Monday',
-      'Tuesday',
-      'Wednesday',
-      'Thursday',
-      'Friday',
-      'Saturday',
-    ];
 
     if (filterServicesDto.availability) {
       filteredServices = filteredServices.filter((service) => {
         const companyPreference = service.user.companyPreference;
         let availability = 'Not available';
 
-        if (companyPreference) {
-          const startDay = companyPreference.startDay;
-          const endDay = companyPreference.endDay;
-          const startDate = companyPreference.startDate;
-          const endDate = companyPreference.endDate;
-
-          if (startDay && endDay && startDate && endDate) {
-            const startDayIndex = daysOfWeek.indexOf(startDay);
-            const endDayIndex = daysOfWeek.indexOf(endDay);
-            const currentDayIndex = daysOfWeek.indexOf(currentDayName);
-
-            const today = new Date(currentDate);
-            today.setHours(0, 0, 0, 0);
-
-            const start = new Date(startDate);
-            start.setHours(0, 0, 0, 0);
-
-            const end = new Date(endDate);
-            end.setHours(0, 0, 0, 0);
-
-            const isEndAfterStart = endDayIndex >= startDayIndex;
-
-            const isTodayInDayRange = isEndAfterStart
-              ? currentDayIndex >= startDayIndex &&
-                currentDayIndex <= endDayIndex
-              : currentDayIndex >= startDayIndex ||
-                currentDayIndex <= endDayIndex;
-
-            const isTodayInDateRange = start <= today && today <= end;
-
-            if (isTodayInDayRange && isTodayInDateRange) {
-              availability = 'Available Now';
-            } else {
-              let foundNext = false;
-              for (let i = 1; i <= 7; i++) {
-                const nextDate = new Date(today);
-                nextDate.setDate(today.getDate() + i);
-
-                const nextDayIndex = (currentDayIndex + i) % 7;
-                const nextDayName = daysOfWeek[nextDayIndex];
-
-                const isNextDayInRange = isEndAfterStart
-                  ? nextDayIndex >= startDayIndex && nextDayIndex <= endDayIndex
-                  : nextDayIndex >= startDayIndex ||
-                    nextDayIndex <= endDayIndex;
-
-                const isNextDateInRange = start <= nextDate && nextDate <= end;
-
-                if (isNextDayInRange && isNextDateInRange) {
-                  if (i === 1) {
-                    availability = `Available Tomorrow`;
-                  } else {
-                    availability = `Available ${nextDayName}`;
-                  }
-                  foundNext = true;
-                  break;
+        if (companyPreference && companyPreference.workingDays && companyPreference.workingDays.length > 0) {
+          const workingDays = companyPreference.workingDays;
+          const currentDayName = new Date().toLocaleDateString('en-US', { weekday: 'short' });
+          
+          // Check if today is a working day
+          const isTodayWorkingDay = workingDays.includes(currentDayName);
+          
+          if (isTodayWorkingDay) {
+            availability = 'Available Now';
+          } else {
+            // Try to find next available day within 7 days
+            let foundNext = false;
+            
+            for (let i = 1; i <= 7; i++) {
+              const nextDate = new Date();
+              nextDate.setDate(nextDate.getDate() + i);
+              const nextDayName = nextDate.toLocaleDateString('en-US', { weekday: 'short' });
+              
+              if (workingDays.includes(nextDayName)) {
+                if (i === 1) {
+                  availability = `Available Tomorrow`;
+                } else {
+                  availability = `Available ${nextDayName}`;
                 }
+                foundNext = true;
+                break;
               }
-
-              if (!foundNext) {
-                availability = 'Not available';
-              }
+            }
+            
+            if (!foundNext) {
+              availability = 'Not available';
             }
           }
         }
@@ -350,68 +259,37 @@ export class CustomerService {
         const companyPreference = service.user.companyPreference;
         let availability = 'Not available';
 
-        if (companyPreference) {
-          const startDay = companyPreference.startDay;
-          const endDay = companyPreference.endDay;
-          const startDate = companyPreference.startDate;
-          const endDate = companyPreference.endDate;
-
-          if (startDay && endDay && startDate && endDate) {
-            const startDayIndex = daysOfWeek.indexOf(startDay);
-            const endDayIndex = daysOfWeek.indexOf(endDay);
-            const currentDayIndex = daysOfWeek.indexOf(currentDayName);
-
-            const today = new Date(currentDate);
-            today.setHours(0, 0, 0, 0);
-
-            const start = new Date(startDate);
-            start.setHours(0, 0, 0, 0);
-
-            const end = new Date(endDate);
-            end.setHours(0, 0, 0, 0);
-
-            const isEndAfterStart = endDayIndex >= startDayIndex;
-
-            const isTodayInDayRange = isEndAfterStart
-              ? currentDayIndex >= startDayIndex &&
-                currentDayIndex <= endDayIndex
-              : currentDayIndex >= startDayIndex ||
-                currentDayIndex <= endDayIndex;
-
-            const isTodayInDateRange = start <= today && today <= end;
-
-            if (isTodayInDayRange && isTodayInDateRange) {
-              availability = 'Available Now';
-            } else {
-              let foundNext = false;
-              for (let i = 1; i <= 7; i++) {
-                const nextDate = new Date(today);
-                nextDate.setDate(today.getDate() + i);
-
-                const nextDayIndex = (currentDayIndex + i) % 7;
-                const nextDayName = daysOfWeek[nextDayIndex];
-
-                const isNextDayInRange = isEndAfterStart
-                  ? nextDayIndex >= startDayIndex && nextDayIndex <= endDayIndex
-                  : nextDayIndex >= startDayIndex ||
-                    nextDayIndex <= endDayIndex;
-
-                const isNextDateInRange = start <= nextDate && nextDate <= end;
-
-                if (isNextDayInRange && isNextDateInRange) {
-                  if (i === 1) {
-                    availability = `Available Tomorrow`;
-                  } else {
-                    availability = `Available ${nextDayName}`;
-                  }
-                  foundNext = true;
-                  break;
+        if (companyPreference && companyPreference.workingDays && companyPreference.workingDays.length > 0) {
+          const workingDays = companyPreference.workingDays;
+          const currentDayName = new Date().toLocaleDateString('en-US', { weekday: 'short' });
+          
+          // Check if today is a working day
+          const isTodayWorkingDay = workingDays.includes(currentDayName);
+          
+          if (isTodayWorkingDay) {
+            availability = 'Available Now';
+          } else {
+            // Try to find next available day within 7 days
+            let foundNext = false;
+            
+            for (let i = 1; i <= 7; i++) {
+              const nextDate = new Date();
+              nextDate.setDate(nextDate.getDate() + i);
+              const nextDayName = nextDate.toLocaleDateString('en-US', { weekday: 'short' });
+              
+              if (workingDays.includes(nextDayName)) {
+                if (i === 1) {
+                  availability = `Available Tomorrow`;
+                } else {
+                  availability = `Available ${nextDayName}`;
                 }
+                foundNext = true;
+                break;
               }
-
-              if (!foundNext) {
-                availability = 'Not available';
-              }
+            }
+            
+            if (!foundNext) {
+              availability = 'Not available';
             }
           }
         }

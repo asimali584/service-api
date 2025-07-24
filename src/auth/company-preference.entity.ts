@@ -24,17 +24,14 @@ export class CompanyPreference {
   @Column('double precision')
   distanceRange: number;
 
-  @Column({ nullable: true })
-  startDay: string;
+  @Column('simple-array', { nullable: true })
+  workingDays: string[]; // Array of working days like ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
   @Column({ nullable: true })
-  endDay: string;
+  startTime: string; // Time format like "9:00 AM"
 
-  @Column({ nullable: true, type: 'date' })
-  startDate: Date;
-
-  @Column({ nullable: true, type: 'date' })
-  endDate: Date;
+  @Column({ nullable: true })
+  endTime: string; // Time format like "5:00 PM"
 
   @OneToOne(() => User, (user) => user.companyPreference, {
     onDelete: 'CASCADE',
