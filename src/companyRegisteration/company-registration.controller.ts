@@ -24,6 +24,7 @@ import {
   CompanyPreferencesDto,
   CreateServiceDto,
   CompanyVerifyDto, // Import new DTO
+  UpdateCompanyInfoDto,
 } from './dto/company-registration.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
@@ -188,6 +189,28 @@ export class CompanyRegistrationController {
   @HttpCode(HttpStatus.OK)
   async getCompanyInfo(@Request() req) {
     return this.companyRegistrationService.getCompanyInfo(req.user.userId);
+  }
+
+  // update company information (BusinessName, ImageUrl, coverImageUrl, BusinessType, BusinessDescription, workingDays, startTime, endTime)
+  @Patch('company-info')
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(MultipleFileInterceptor)
+  @HttpCode(HttpStatus.OK)
+  async updateCompanyInfo(
+    @Request() req,
+    @Body() updateCompanyInfoDto: UpdateCompanyInfoDto,
+  ) {
+    console.log('Received Company Info Update:', updateCompanyInfoDto);
+    
+    const image = req.files?.['image']?.[0];
+    const coverImage = req.files?.['cover-image']?.[0];
+    
+    return this.companyRegistrationService.updateCompanyInfo(
+      req.user.userId,
+      updateCompanyInfoDto,
+      image,
+      coverImage,
+    );
   }
 
   @Post('services')

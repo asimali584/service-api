@@ -16,6 +16,7 @@ import {
   CompanyPreferencesDto,
   CreateServiceDto,
   CompanyVerifyDto,
+  UpdateCompanyInfoDto,
 } from './dto/company-registration.dto';
 import { AuthService } from '../auth/auth.service'; // Import AuthService
 import { JwtService } from '@nestjs/jwt';
@@ -426,11 +427,147 @@ export class CompanyRegistrationService {
       throw new BadRequestException('Company details not found.');
     }
 
+    const companyPreference = await this.companyPreferenceRepository.findOne({
+      where: { user: { id: userId } },
+    });
+
     return {
       email: user.email,
       businessName: company.businessName,
       imageUrl: company.imageUrl,
       coverImageUrl: company.coverImageUrl,
+      businessType: company.businessType,
+      businessDescription: company.businessDescription,
+      workingDays: companyPreference?.workingDays?.join(', ') || '',
+      startTime: companyPreference?.startTime || null,
+      endTime: companyPreference?.endTime || null,
+    };
+  }
+
+  async updateCompanyInfo(
+    userId: number,
+    updateCompanyInfoDto: UpdateCompanyInfoDto,
+    image?: Express.Multer.File,
+    coverImage?: Express.Multer.File,
+  ) {
+    const user = await this.usersRepository.findOne({
+      where: { id: userId, role: UserRole.COMPANY, isVerified: true },
+    });
+
+    if (!user) {
+      throw new BadRequestException(
+        'User must be a verified company to update company information.',
+      );
+    }
+
+    // Get or create company record
+    let company = await this.companyRepository.findOne({
+      where: { user: { id: userId } },
+    });
+
+    if (!company) {
+      company = this.companyRepository.create({
+        businessName: '',
+        businessType: '',
+        businessDescription: '',
+        imageUrl: '',
+        coverImageUrl: '',
+        user,
+      });
+    }
+
+    // Get or create company preference record
+    let companyPreference = await this.companyPreferenceRepository.findOne({
+      where: { user: { id: userId } },
+    });
+
+    if (!companyPreference) {
+      companyPreference = this.companyPreferenceRepository.create({
+        websiteLink: '',
+        latitude: 0,
+        longitude: 0,
+        distanceRange: 0,
+        workingDays: [],
+        startTime: '',
+        endTime: '',
+        user,
+      });
+    }
+
+    // Update company fields if provided
+    if (updateCompanyInfoDto.businessName !== undefined) {
+      company.businessName = updateCompanyInfoDto.businessName;
+    }
+    if (updateCompanyInfoDto.businessType !== undefined) {
+      company.businessType = updateCompanyInfoDto.businessType;
+    }
+    if (updateCompanyInfoDto.businessDescription !== undefined) {
+      company.businessDescription = updateCompanyInfoDto.businessDescription;
+    }
+
+    // Update images if provided
+    if (image) {
+      company.imageUrl = `${process.env.SERVER_URI}/${image.path}`;
+    }
+    if (coverImage) {
+      company.coverImageUrl = `${process.env.SERVER_URI}/${coverImage.path}`;
+    }
+
+    // Update company preference fields if provided
+    if (updateCompanyInfoDto.workingDays !== undefined) {
+      // Validate working days
+      const validDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      
+      // Split by comma and trim whitespace
+      const workingDaysArray = updateCompanyInfoDto.workingDays.split(',').map(day => day.trim());
+      
+      const invalidDays = workingDaysArray.filter(day => !validDays.includes(day));
+      
+      if (invalidDays.length > 0) {
+        throw new BadRequestException(`Invalid working days: ${invalidDays.join(', ')}. Valid days are: ${validDays.join(', ')}`);
+      }
+      
+      companyPreference.workingDays = workingDaysArray;
+    }
+
+    if (updateCompanyInfoDto.startTime !== undefined) {
+      // Validate time format (HH:MM AM/PM)
+      const timeRegex = /^(1[0-2]|0?[1-9]):([0-5][0-9])\s?(AM|PM|am|pm)$/;
+      
+      if (updateCompanyInfoDto.startTime && !timeRegex.test(updateCompanyInfoDto.startTime)) {
+        throw new BadRequestException('Invalid start time format. Use format like "9:00 AM" or "2:30 PM"');
+      }
+      
+      companyPreference.startTime = updateCompanyInfoDto.startTime;
+    }
+
+    if (updateCompanyInfoDto.endTime !== undefined) {
+      // Validate time format (HH:MM AM/PM)
+      const timeRegex = /^(1[0-2]|0?[1-9]):([0-5][0-9])\s?(AM|PM|am|pm)$/;
+      
+      if (updateCompanyInfoDto.endTime && !timeRegex.test(updateCompanyInfoDto.endTime)) {
+        throw new BadRequestException('Invalid end time format. Use format like "5:00 PM" or "11:30 PM"');
+      }
+      
+      companyPreference.endTime = updateCompanyInfoDto.endTime;
+    }
+
+    // Save both records
+    await this.companyRepository.save(company);
+    await this.companyPreferenceRepository.save(companyPreference);
+
+    return {
+      message: 'Company information updated successfully',
+      data: {
+        businessName: company.businessName,
+        businessType: company.businessType,
+        businessDescription: company.businessDescription,
+        imageUrl: company.imageUrl,
+        coverImageUrl: company.coverImageUrl,
+        workingDays: companyPreference.workingDays?.join(', ') || '',
+        startTime: companyPreference.startTime,
+        endTime: companyPreference.endTime,
+      },
     };
   }
 

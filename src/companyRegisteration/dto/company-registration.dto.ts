@@ -132,3 +132,32 @@ export class CompanyVerifyDto {
   @IsNotEmpty()
   confirmPassword: string;
 }
+
+export class UpdateCompanyInfoDto {
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  businessName?: string;
+
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  businessType?: string;
+
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  businessDescription?: string;
+
+  @IsOptional()
+  @IsString()
+  workingDays?: string; // String format like "Mon, Tue, Wed, Thu, Fri, Sat, Sun"
+
+  @IsOptional()
+  @IsString()
+  startTime?: string; // Time format like "9:00 AM"
+
+  @IsOptional()
+  @IsString()
+  endTime?: string; // Time format like "5:00 PM"
+}
