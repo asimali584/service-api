@@ -584,6 +584,44 @@ export class CompanyRegistrationService {
     };
   }
 
+  async deleteService(serviceId: number, userId: number) {
+    const user = await this.usersRepository.findOne({
+      where: { id: userId, role: UserRole.COMPANY, isVerified: true },
+    });
+
+    if (!user) {
+      throw new BadRequestException(
+        'User must be a verified company to delete services.',
+      );
+    }
+
+    // Find the service and verify it belongs to the user
+    const service = await this.serviceRepository.findOne({
+      where: { id: serviceId, user: { id: userId } },
+    });
+
+    if (!service) {
+      throw new BadRequestException(
+        'Service not found or you do not have permission to delete this service.',
+      );
+    }
+
+    try {
+      await this.serviceRepository.remove(service);
+      return {
+        message: 'Service deleted successfully',
+        deletedService: {
+          id: service.id,
+          serviceName: service.serviceName,
+          rateType: service.rateType,
+        },
+      };
+    } catch (error) {
+      console.error('Database delete error:', error.message);
+      throw new InternalServerErrorException('Failed to delete service');
+    }
+  }
+
   async getCompanyRelatedIds(userId: number) {
   const user = await this.usersRepository.findOne({
     where: { id: userId, role: UserRole.COMPANY, isVerified: true },

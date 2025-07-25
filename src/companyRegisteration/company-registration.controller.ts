@@ -11,6 +11,8 @@ import {
   UploadedFile,
   UploadedFiles,
   Get,
+  Delete,
+  Param,
   BadRequestException,
   CallHandler,
   ExecutionContext,
@@ -249,5 +251,20 @@ export class CompanyRegistrationController {
 async getCompanyRelatedIds(@Request() req) {
   return this.companyRegistrationService.getCompanyRelatedIds(req.user.userId);
 }
+
+  // Delete a specific service by ID
+  @Delete('services/:serviceId')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async deleteService(
+    @Request() req,
+    @Param('serviceId') serviceId: string,
+  ) {
+    console.log('Deleting Service:', serviceId, 'for user:', req.user.userId);
+    return this.companyRegistrationService.deleteService(
+      parseInt(serviceId),
+      req.user.userId,
+    );
+  }
 
 }
