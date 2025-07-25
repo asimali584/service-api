@@ -50,7 +50,13 @@ export class Service {
   price: number;
 
   @Column({ nullable: true })
-  timeDuration: number;
+  timeDuration: number; // For BY_HOUR rate type
+
+  @Column({ nullable: true })
+  numberOfRooms: number; // For BY_ROOM rate type
+
+  @Column({ nullable: true })
+  numberOfWindows: number; // For BY_WINDOW rate type
 
   @ManyToOne(() => User, (user) => user.service, { onDelete: 'CASCADE' })
   @JoinColumn()

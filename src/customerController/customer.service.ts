@@ -138,6 +138,8 @@ export class CustomerService {
           rateType: service.rateType,
           price: service.price,
           timeDuration: service.timeDuration,
+          numberOfRooms: service.numberOfRooms,
+          numberOfWindows: service.numberOfWindows,
           imagePath: service.imageUrl,
           businessName: service.user.company?.businessName || 'Unknown',
           businessType:
@@ -338,6 +340,8 @@ export class CustomerService {
           rateType: service.rateType,
           price: service.price,
           timeDuration: service.timeDuration,
+          numberOfRooms: service.numberOfRooms,
+          numberOfWindows: service.numberOfWindows,
           imagePath: service.imageUrl,
           businessName: service.user.company?.businessName || 'Unknown',
           businessType:

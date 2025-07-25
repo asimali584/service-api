@@ -349,21 +349,34 @@ export class CompanyRegistrationService {
       );
     }
 
-    const { rateType, timeDuration } = createServiceDto;
-    if (
-      [RateType.BY_HOUR, RateType.BY_ROOM, RateType.BY_WINDOW].includes(
-        rateType,
-      ) &&
-      !timeDuration
-    ) {
-      throw new BadRequestException(
-        `Time duration is required for rate type ${rateType}`,
-      );
-    }
-    if (rateType === RateType.FIXED_PRICE && timeDuration) {
-      throw new BadRequestException(
-        'Time duration should not be provided for Fixed price',
-      );
+    const { rateType, timeDuration, numberOfRooms, numberOfWindows } = createServiceDto;
+    
+    // Validate fields based on rate type
+    if (rateType === RateType.BY_HOUR) {
+      if (!timeDuration) {
+        throw new BadRequestException('Time duration is required for By hour rate type');
+      }
+      if (numberOfRooms || numberOfWindows) {
+        throw new BadRequestException('Number of rooms and windows should not be provided for By hour rate type');
+      }
+    } else if (rateType === RateType.BY_ROOM) {
+      if (!numberOfRooms) {
+        throw new BadRequestException('Number of rooms is required for By Room rate type');
+      }
+      if (timeDuration || numberOfWindows) {
+        throw new BadRequestException('Time duration and number of windows should not be provided for By Room rate type');
+      }
+    } else if (rateType === RateType.BY_WINDOW) {
+      if (!numberOfWindows) {
+        throw new BadRequestException('Number of windows is required for By Window rate type');
+      }
+      if (timeDuration || numberOfRooms) {
+        throw new BadRequestException('Time duration and number of rooms should not be provided for By Window rate type');
+      }
+    } else if (rateType === RateType.FIXED_PRICE) {
+      if (timeDuration || numberOfRooms || numberOfWindows) {
+        throw new BadRequestException('Time duration, number of rooms, and number of windows should not be provided for Fixed Price rate type');
+      }
     }
 
     const service = this.serviceRepository.create({

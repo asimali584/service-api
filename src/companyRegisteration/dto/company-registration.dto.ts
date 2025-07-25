@@ -97,14 +97,20 @@ export class CreateServiceDto {
   @Min(0)
   price: number;
 
-  @ValidateIf((o) =>
-    [RateType.BY_HOUR, RateType.BY_ROOM, RateType.BY_WINDOW].includes(
-      o.rateType,
-    ),
-  )
+  @ValidateIf((o) => o.rateType === RateType.BY_HOUR)
   @IsInt()
   @Min(1)
-  timeDuration?: number; // ✅ OPTIONAL
+  timeDuration?: number; // Required for BY_HOUR rate type
+
+  @ValidateIf((o) => o.rateType === RateType.BY_ROOM)
+  @IsInt()
+  @Min(1)
+  numberOfRooms?: number; // Required for BY_ROOM rate type
+
+  @ValidateIf((o) => o.rateType === RateType.BY_WINDOW)
+  @IsInt()
+  @Min(1)
+  numberOfWindows?: number; // Required for BY_WINDOW rate type
 }
 
 export class CompanyVerifyDto {
