@@ -317,10 +317,23 @@ export class CompanyRegistrationService {
 
     const services = await this.serviceRepository.find({
       where: { user: { id: userId } },
-      select: ['id', 'serviceName', 'imageUrl', 'price'],
     });
 
-    return { services };
+    return {
+      message: 'Services retrieved successfully',
+      data: services.map(service => ({
+        id: service.id,
+        serviceName: service.serviceName,
+        description: service.description,
+        location: service.location,
+        rateType: service.rateType,
+        price: service.price,
+        timeDuration: service.timeDuration,
+        numberOfRooms: service.numberOfRooms,
+        numberOfWindows: service.numberOfWindows,
+        imageUrl: service.imageUrl,
+      })),
+    };
   }
 
   async createService(
