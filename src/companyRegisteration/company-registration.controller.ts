@@ -27,6 +27,7 @@ import {
   CreateServiceDto,
   CompanyVerifyDto, // Import new DTO
   UpdateCompanyInfoDto,
+  UpdateServiceDto,
 } from './dto/company-registration.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
@@ -251,6 +252,39 @@ export class CompanyRegistrationController {
 async getCompanyRelatedIds(@Request() req) {
   return this.companyRegistrationService.getCompanyRelatedIds(req.user.userId);
 }
+
+  // Update a specific service by ID
+  @Patch('services/:serviceId')
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(
+    FileInterceptor('image', {
+      storage: diskStorage({
+        destination: './uploads',
+        filename: (req, file, cb) => {
+          const uniqueSuffix =
+            Date.now() + '-' + Math.round(Math.random() * 1e9);
+          const extension = extname(file.originalname).toLowerCase();
+          cb(null, `${file.fieldname}-${uniqueSuffix}${extension}`);
+        },
+      }),
+      limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+    }),
+  )
+  @HttpCode(HttpStatus.OK)
+  async updateService(
+    @Request() req,
+    @Param('serviceId') serviceId: string,
+    @Body() updateServiceDto: UpdateServiceDto,
+    @UploadedFile() image?: Express.Multer.File,
+  ) {
+    console.log('Updating Service:', serviceId, 'for user:', req.user.userId);
+    return this.companyRegistrationService.updateService(
+      parseInt(serviceId),
+      req.user.userId,
+      updateServiceDto,
+      image,
+    );
+  }
 
   // Delete a specific service by ID
   @Delete('services/:serviceId')

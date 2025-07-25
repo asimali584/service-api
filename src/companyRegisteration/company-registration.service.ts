@@ -17,6 +17,7 @@ import {
   CreateServiceDto,
   CompanyVerifyDto,
   UpdateCompanyInfoDto,
+  UpdateServiceDto,
 } from './dto/company-registration.dto';
 import { AuthService } from '../auth/auth.service'; // Import AuthService
 import { JwtService } from '@nestjs/jwt';
@@ -595,6 +596,134 @@ export class CompanyRegistrationService {
         endTime: companyPreference.endTime,
       },
     };
+  }
+
+  async updateService(
+    serviceId: number,
+    userId: number,
+    updateServiceDto: UpdateServiceDto,
+    image?: Express.Multer.File,
+  ) {
+    const user = await this.usersRepository.findOne({
+      where: { id: userId, role: UserRole.COMPANY, isVerified: true },
+    });
+
+    if (!user) {
+      throw new BadRequestException(
+        'User must be a verified company to update services.',
+      );
+    }
+
+    // Find the service and verify it belongs to the user
+    const service = await this.serviceRepository.findOne({
+      where: { id: serviceId, user: { id: userId } },
+    });
+
+    if (!service) {
+      throw new BadRequestException(
+        'Service not found or you do not have permission to update this service.',
+      );
+    }
+
+    // Validate image if provided
+    if (image) {
+      const allowedExtensions = ['.jpg', '.jpeg', '.png'];
+      const ext = extname(image.originalname).toLowerCase();
+      if (!allowedExtensions.includes(ext)) {
+        throw new BadRequestException(
+          'Only JPG, JPEG, or PNG images are allowed',
+        );
+      }
+    }
+
+    // Get the current rate type to handle validation
+    const currentRateType = service.rateType;
+    const newRateType = updateServiceDto.rateType || currentRateType;
+
+    // Validate fields based on rate type if it's being changed
+    if (updateServiceDto.rateType && updateServiceDto.rateType !== currentRateType) {
+      const { timeDuration, numberOfRooms, numberOfWindows } = updateServiceDto;
+      
+      if (updateServiceDto.rateType === RateType.BY_HOUR) {
+        if (!timeDuration) {
+          throw new BadRequestException('Time duration is required for By hour rate type');
+        }
+        if (numberOfRooms || numberOfWindows) {
+          throw new BadRequestException('Number of rooms and windows should not be provided for By hour rate type');
+        }
+      } else if (updateServiceDto.rateType === RateType.BY_ROOM) {
+        if (!numberOfRooms) {
+          throw new BadRequestException('Number of rooms is required for By Room rate type');
+        }
+        if (timeDuration || numberOfWindows) {
+          throw new BadRequestException('Time duration and number of windows should not be provided for By Room rate type');
+        }
+      } else if (updateServiceDto.rateType === RateType.BY_WINDOW) {
+        if (!numberOfWindows) {
+          throw new BadRequestException('Number of windows is required for By Window rate type');
+        }
+        if (timeDuration || numberOfRooms) {
+          throw new BadRequestException('Time duration and number of rooms should not be provided for By Window rate type');
+        }
+      } else if (updateServiceDto.rateType === RateType.FIXED_PRICE) {
+        if (timeDuration || numberOfRooms || numberOfWindows) {
+          throw new BadRequestException('Time duration, number of rooms, and number of windows should not be provided for Fixed Price rate type');
+        }
+      }
+    }
+
+    // Update service fields
+    if (updateServiceDto.serviceName !== undefined) {
+      service.serviceName = updateServiceDto.serviceName;
+    }
+    if (updateServiceDto.description !== undefined) {
+      service.description = updateServiceDto.description;
+    }
+    if (updateServiceDto.location !== undefined) {
+      service.location = updateServiceDto.location;
+    }
+    if (updateServiceDto.rateType !== undefined) {
+      service.rateType = updateServiceDto.rateType;
+    }
+    if (updateServiceDto.price !== undefined) {
+      service.price = updateServiceDto.price;
+    }
+    if (updateServiceDto.timeDuration !== undefined) {
+      service.timeDuration = updateServiceDto.timeDuration;
+    }
+    if (updateServiceDto.numberOfRooms !== undefined) {
+      service.numberOfRooms = updateServiceDto.numberOfRooms;
+    }
+    if (updateServiceDto.numberOfWindows !== undefined) {
+      service.numberOfWindows = updateServiceDto.numberOfWindows;
+    }
+
+    // Update image if provided
+    if (image) {
+      service.imageUrl = `${process.env.SERVER_URI}/${image.path}`;
+    }
+
+    try {
+      await this.serviceRepository.save(service);
+      return {
+        message: 'Service updated successfully',
+        updatedService: {
+          id: service.id,
+          serviceName: service.serviceName,
+          description: service.description,
+          location: service.location,
+          rateType: service.rateType,
+          price: service.price,
+          timeDuration: service.timeDuration,
+          numberOfRooms: service.numberOfRooms,
+          numberOfWindows: service.numberOfWindows,
+          imageUrl: service.imageUrl,
+        },
+      };
+    } catch (error) {
+      console.error('Database update error:', error.message);
+      throw new InternalServerErrorException('Failed to update service');
+    }
   }
 
   async deleteService(serviceId: number, userId: number) {

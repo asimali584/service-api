@@ -167,3 +167,43 @@ export class UpdateCompanyInfoDto {
   @IsString()
   endTime?: string; // Time format like "5:00 PM"
 }
+
+export class UpdateServiceDto {
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  serviceName?: string;
+
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  description?: string;
+
+  @IsOptional()
+  @IsEnum(ServiceLocation)
+  location?: ServiceLocation;
+
+  @IsOptional()
+  @IsEnum(RateType)
+  rateType?: RateType;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  price?: number;
+
+  @ValidateIf((o) => o.rateType === RateType.BY_HOUR)
+  @IsInt()
+  @Min(1)
+  timeDuration?: number; // Required for BY_HOUR rate type
+
+  @ValidateIf((o) => o.rateType === RateType.BY_ROOM)
+  @IsInt()
+  @Min(1)
+  numberOfRooms?: number; // Required for BY_ROOM rate type
+
+  @ValidateIf((o) => o.rateType === RateType.BY_WINDOW)
+  @IsInt()
+  @Min(1)
+  numberOfWindows?: number; // Required for BY_WINDOW rate type
+}
