@@ -84,7 +84,12 @@ export class CustomerService {
         companyPreference.longitude,
       );
 
-      return distance <= companyPreference.distanceRange;
+      // Use the appropriate distance range based on the company's preferred unit
+      const distanceRange = companyPreference.distanceUnit === 'miles' 
+        ? companyPreference.distanceRangeMiles 
+        : companyPreference.distanceRangeKilometer;
+      
+      return distance <= distanceRange;
     });
 
     return {
@@ -190,7 +195,12 @@ export class CustomerService {
           companyPreference.longitude,
         );
 
-        return distance <= companyPreference.distanceRange;
+        // Use the appropriate distance range based on the company's preferred unit
+        const distanceRange = companyPreference.distanceUnit === 'miles' 
+          ? companyPreference.distanceRangeMiles 
+          : companyPreference.distanceRangeKilometer;
+        
+        return distance <= distanceRange;
       });
     }
 

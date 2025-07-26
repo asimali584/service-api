@@ -12,6 +12,7 @@ import {
   isPhoneNumber,
   isDateString,
   IsDateString,
+  IsIn,
 } from 'class-validator';
 import { ServiceLocation, RateType } from 'src/auth/service.entity';
 
@@ -61,9 +62,20 @@ export class CompanyPreferencesDto {
   @IsNumber()
   longitude: number;
 
+  @IsOptional()
   @IsNumber()
   @Min(0)
-  distanceRange: number;
+  distanceRangeKilometer?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  distanceRangeMiles?: number;
+
+  @IsOptional()
+  @IsString()
+  @IsIn(['kilometers', 'miles'])
+  distanceUnit?: string; // 'kilometers' or 'miles'
 
   @IsOptional()
   @IsString({ each: true })
@@ -166,6 +178,29 @@ export class UpdateCompanyInfoDto {
   @IsOptional()
   @IsString()
   endTime?: string; // Time format like "5:00 PM"
+
+  @IsOptional()
+  @IsNumber()
+  latitude?: number;
+
+  @IsOptional()
+  @IsNumber()
+  longitude?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  distanceRangeKilometer?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  distanceRangeMiles?: number;
+
+  @IsOptional()
+  @IsString()
+  @IsIn(['kilometers', 'miles'])
+  distanceUnit?: string; // 'kilometers' or 'miles'
 }
 
 export class UpdateServiceDto {

@@ -21,8 +21,14 @@ export class CompanyPreference {
   @Column('double precision')
   longitude: number;
 
-  @Column('double precision')
-  distanceRange: number;
+  @Column('double precision', { nullable: true })
+  distanceRangeKilometer: number;
+
+  @Column('double precision', { nullable: true })
+  distanceRangeMiles: number;
+
+  @Column({ nullable: true, default: 'kilometers' })
+  distanceUnit: string; // 'kilometers' or 'miles'
 
   @Column('simple-array', { nullable: true })
   workingDays: string[]; // Array of working days like ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']

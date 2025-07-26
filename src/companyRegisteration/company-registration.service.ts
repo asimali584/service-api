@@ -228,6 +228,29 @@ export class CompanyRegistrationService {
       }
     }
 
+    // Validate distance range fields if provided
+    if (companyPreferencesDto.distanceRangeKilometer !== undefined) {
+      if (companyPreferencesDto.distanceRangeKilometer < 0) {
+        throw new BadRequestException('Distance range in kilometers must be a positive number');
+      }
+      companyPreference.distanceRangeKilometer = companyPreferencesDto.distanceRangeKilometer;
+    }
+
+    if (companyPreferencesDto.distanceRangeMiles !== undefined) {
+      if (companyPreferencesDto.distanceRangeMiles < 0) {
+        throw new BadRequestException('Distance range in miles must be a positive number');
+      }
+      companyPreference.distanceRangeMiles = companyPreferencesDto.distanceRangeMiles;
+    }
+
+    // Validate distance unit if provided
+    if (companyPreferencesDto.distanceUnit) {
+      if (!['kilometers', 'miles'].includes(companyPreferencesDto.distanceUnit)) {
+        throw new BadRequestException('Distance unit must be either "kilometers" or "miles"');
+      }
+      companyPreference.distanceUnit = companyPreferencesDto.distanceUnit;
+    }
+
     await this.companyPreferenceRepository.save(companyPreference);
 
     // Handle image updates if provided
@@ -468,6 +491,11 @@ export class CompanyRegistrationService {
       workingDays: companyPreference?.workingDays?.join(', ') || '',
       startTime: companyPreference?.startTime || null,
       endTime: companyPreference?.endTime || null,
+      latitude: companyPreference?.latitude || null,
+      longitude: companyPreference?.longitude || null,
+      distanceRangeKilometer: companyPreference?.distanceRangeKilometer || null,
+      distanceRangeMiles: companyPreference?.distanceRangeMiles || null,
+      distanceUnit: companyPreference?.distanceUnit || null,
     };
   }
 
@@ -513,7 +541,9 @@ export class CompanyRegistrationService {
         websiteLink: '',
         latitude: 0,
         longitude: 0,
-        distanceRange: 0,
+        distanceRangeKilometer: 0,
+        distanceRangeMiles: 0,
+        distanceUnit: 'kilometers',
         workingDays: [],
         startTime: '',
         endTime: '',
@@ -579,6 +609,37 @@ export class CompanyRegistrationService {
       companyPreference.endTime = updateCompanyInfoDto.endTime;
     }
 
+    // Update location and distance range fields if provided
+    if (updateCompanyInfoDto.latitude !== undefined) {
+      companyPreference.latitude = updateCompanyInfoDto.latitude;
+    }
+
+    if (updateCompanyInfoDto.longitude !== undefined) {
+      companyPreference.longitude = updateCompanyInfoDto.longitude;
+    }
+
+    // Handle distance range updates based on unit
+    if (updateCompanyInfoDto.distanceRangeKilometer !== undefined) {
+      if (updateCompanyInfoDto.distanceRangeKilometer < 0) {
+        throw new BadRequestException('Distance range in kilometers must be a positive number');
+      }
+      companyPreference.distanceRangeKilometer = updateCompanyInfoDto.distanceRangeKilometer;
+    }
+
+    if (updateCompanyInfoDto.distanceRangeMiles !== undefined) {
+      if (updateCompanyInfoDto.distanceRangeMiles < 0) {
+        throw new BadRequestException('Distance range in miles must be a positive number');
+      }
+      companyPreference.distanceRangeMiles = updateCompanyInfoDto.distanceRangeMiles;
+    }
+
+    if (updateCompanyInfoDto.distanceUnit !== undefined) {
+      if (!['kilometers', 'miles'].includes(updateCompanyInfoDto.distanceUnit)) {
+        throw new BadRequestException('Distance unit must be either "kilometers" or "miles"');
+      }
+      companyPreference.distanceUnit = updateCompanyInfoDto.distanceUnit;
+    }
+
     // Save both records
     await this.companyRepository.save(company);
     await this.companyPreferenceRepository.save(companyPreference);
@@ -594,6 +655,11 @@ export class CompanyRegistrationService {
         workingDays: companyPreference.workingDays?.join(', ') || '',
         startTime: companyPreference.startTime,
         endTime: companyPreference.endTime,
+        latitude: companyPreference.latitude,
+        longitude: companyPreference.longitude,
+        distanceRangeKilometer: companyPreference.distanceRangeKilometer,
+        distanceRangeMiles: companyPreference.distanceRangeMiles,
+        distanceUnit: companyPreference.distanceUnit,
       },
     };
   }
