@@ -12,7 +12,7 @@ import {
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { CustomerService } from './customer.service';
-import { GetServicesDto, CustomerLocationDto } from './dto/customer.dto';
+import { GetServicesDto, CustomerLocationDto, BusinessDetailsDto } from './dto/customer.dto';
 import { FilterServicesDto } from './dto/filter-services.dto';
 
 @ApiTags('Customer')
@@ -65,6 +65,19 @@ export class CustomerController {
       filterServicesDto,
       req.user.userId,
     );
+  }
+
+  // Get business details when user clicks "Book Now"
+  @Post('business-details')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Get detailed business information and services' })
+  @ApiResponse({
+    status: 200,
+    description: 'Business details retrieved successfully',
+  })
+  async getBusinessDetails(@Request() req, @Body() businessDetailsDto: BusinessDetailsDto) {
+    return this.customerService.getBusinessDetails(businessDetailsDto, req.user.userId);
   }
 
   // display Customer (fullName and Email)

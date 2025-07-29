@@ -2,13 +2,14 @@ import {
   Injectable,
   BadRequestException,
   UnauthorizedException,
+  NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User, UserRole } from '../auth/user.entity';
 import { CompanyPreference } from '../auth/company-preference.entity';
 import { Service } from '../auth/service.entity';
-import { CustomerLocationDto, GetServicesDto } from './dto/customer.dto';
+import { CustomerLocationDto, GetServicesDto, BusinessDetailsDto } from './dto/customer.dto';
 import { FilterServicesDto } from './dto/filter-services.dto';
 
 @Injectable()
@@ -141,6 +142,7 @@ export class CustomerService {
           businessImage: service.user.company?.imageUrl || 'Unknown Business Profile Image',
           coverImageUrl: service.user.company?.coverImageUrl || 'Unknown Cover Image',
           businessName: service.user.company?.businessName || 'Unknown',
+          businessType: service.user.company?.businessType || 'Unknown Business Type',
           availability,
           location: service.location, // Location of first created service
           price: service.price, // Price of first created service (will be updated to lowest)
@@ -158,10 +160,12 @@ export class CustomerService {
     });
 
     // Convert map to array and format response
-    const businesses = Array.from(businessMap.values()).map((business) => ({
+    const businesses = Array.from(businessMap.entries()).map(([companyId, business]) => ({
+      id: companyId,
       businessImage: business.businessImage,
       coverImageUrl: business.coverImageUrl,
       businessName: business.businessName,
+      businessType: business.businessType,
       availability: business.availability,
       location: business.location,
       price: business.price.toString(),
@@ -367,6 +371,7 @@ export class CustomerService {
           businessImage: service.user.company?.imageUrl || 'Unknown Business Profile Image',
           coverImageUrl: service.user.company?.coverImageUrl || 'Unknown Cover Image',
           businessName: service.user.company?.businessName || 'Unknown',
+          businessType: service.user.company?.businessType || 'Unknown Business Type',
           availability,
           location: service.location, // Location of first created service
           price: service.price, // Price of first created service (will be updated to lowest)
@@ -384,10 +389,12 @@ export class CustomerService {
     });
 
     // Convert map to array and format response
-    const businesses = Array.from(businessMap.values()).map((business) => ({
+    const businesses = Array.from(businessMap.entries()).map(([companyId, business]) => ({
+      id: companyId,
       businessImage: business.businessImage,
       coverImageUrl: business.coverImageUrl,
       businessName: business.businessName,
+      businessType: business.businessType,
       availability: business.availability,
       location: business.location,
       price: business.price.toString(),
@@ -416,6 +423,100 @@ export class CustomerService {
     return {
       fullName: user.fullName,
       email: user.email,
+    };
+  }
+
+  async getBusinessDetails(businessDetailsDto: BusinessDetailsDto, userId: number) {
+    const user = await this.usersRepository.findOne({
+      where: { id: userId, role: UserRole.CUSTOMER, isVerified: true },
+    });
+    if (!user) {
+      throw new UnauthorizedException(
+        'User must be a verified customer to view business details',
+      );
+    }
+
+    const business = await this.usersRepository.findOne({
+      where: { id: businessDetailsDto.businessId, role: UserRole.COMPANY, isVerified: true },
+      relations: ['company', 'companyPreference'],
+    });
+
+    if (!business) {
+      throw new NotFoundException('Business not found or not a verified company');
+    }
+
+    const companyPreference = business.companyPreference;
+    
+    // Get services for this business
+    const services = await this.serviceRepository.find({
+      where: { user: { id: businessDetailsDto.businessId } },
+    });
+
+    // Calculate availability
+    let availability = 'Not available';
+    let availabilityDay = '';
+    
+    if (companyPreference && companyPreference.workingDays && companyPreference.workingDays.length > 0) {
+      const workingDays = companyPreference.workingDays;
+      const currentDayName = new Date().toLocaleDateString('en-US', { weekday: 'short' });
+      
+      // Check if today is a working day
+      const isTodayWorkingDay = workingDays.includes(currentDayName);
+      
+      if (isTodayWorkingDay) {
+        availability = 'Available Now';
+        availabilityDay = currentDayName;
+      } else {
+        // Try to find next available day within 7 days
+        let foundNext = false;
+        
+        for (let i = 1; i <= 7; i++) {
+          const nextDate = new Date();
+          nextDate.setDate(nextDate.getDate() + i);
+          const nextDayName = nextDate.toLocaleDateString('en-US', { weekday: 'short' });
+          
+          if (workingDays.includes(nextDayName)) {
+            if (i === 1) {
+              availability = 'Available Tomorrow';
+              availabilityDay = nextDayName;
+            } else {
+              availability = `Available ${nextDayName}`;
+              availabilityDay = nextDayName;
+            }
+            foundNext = true;
+            break;
+          }
+        }
+        
+        if (!foundNext) {
+          availability = 'Not available';
+          availabilityDay = '';
+        }
+      }
+    }
+
+    return {
+      message: 'Business details retrieved successfully',
+      data: {
+        businessImage: business.company?.imageUrl || 'Unknown Business Profile Image',
+        coverImageUrl: business.company?.coverImageUrl || 'Unknown Cover Image',
+        businessName: business.company?.businessName || 'Unknown',
+        businessType: business.company?.businessType || 'Unknown Business Type',
+        availability,
+        availabilityDay,
+        services: services.map(service => ({
+          id: service.id,
+          serviceName: service.serviceName,
+          description: service.description,
+          location: service.location,
+          rateType: service.rateType,
+          price: service.price.toString(),
+          timeDuration: service.timeDuration,
+          numberOfRooms: service.numberOfRooms,
+          numberOfWindows: service.numberOfWindows,
+          imageUrl: service.imageUrl,
+        })),
+      },
     };
   }
 
