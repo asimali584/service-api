@@ -63,9 +63,8 @@ export class CustomerService {
 
     const services = await this.serviceRepository.find({
       relations: ['user', 'user.company', 'user.companyPreference'],
+      order: { id: 'ASC' }, // Order by ID to get first created service
     });
-
-
 
     const servicesWithinRadius = services.filter((service) => {
       const companyPreference = service.user.companyPreference;
@@ -92,11 +91,14 @@ export class CustomerService {
       return distance <= distanceRange;
     });
 
-    return {
-      message: servicesWithinRadius.length
-        ? 'Services retrieved successfully'
-        : 'No Service Found in your Location',
-      data: servicesWithinRadius.map((service) => {
+    // Group services by company/business
+    const businessMap = new Map();
+
+    servicesWithinRadius.forEach((service) => {
+      const companyId = service.user.id;
+      
+      if (!businessMap.has(companyId)) {
+        // Initialize business data
         const companyPreference = service.user.companyPreference;
         let availability = 'Not available';
 
@@ -135,25 +137,41 @@ export class CustomerService {
           }
         }
 
-        return {
-          id: service.id,
-          serviceName: service.serviceName,
-          description: service.description,
-          location: service.location,
-          rateType: service.rateType,
-          price: service.price,
-          timeDuration: service.timeDuration,
-          numberOfRooms: service.numberOfRooms,
-          numberOfWindows: service.numberOfWindows,
-          imagePath: service.imageUrl,
+        businessMap.set(companyId, {
+          businessImage: service.user.company?.imageUrl || 'Unknown Business Profile Image',
+          coverImageUrl: service.user.company?.coverImageUrl || 'Unknown Cover Image',
           businessName: service.user.company?.businessName || 'Unknown',
-          businessType:
-            service.user.company?.businessType || 'Unknown Business Type',
-          businessProfileImage:
-            service.user.company?.imageUrl || 'Unknown Business Profile Image',
           availability,
-        };
-      }),
+          location: service.location, // Location of first created service
+          price: service.price, // Price of first created service (will be updated to lowest)
+          services: [service.price], // Track all prices to find lowest
+        });
+      } else {
+        // Update existing business data
+        const businessData = businessMap.get(companyId);
+        businessData.services.push(service.price);
+        
+        // Update price to lowest
+        const lowestPrice = Math.min(...businessData.services);
+        businessData.price = lowestPrice;
+      }
+    });
+
+    // Convert map to array and format response
+    const businesses = Array.from(businessMap.values()).map((business) => ({
+      businessImage: business.businessImage,
+      coverImageUrl: business.coverImageUrl,
+      businessName: business.businessName,
+      availability: business.availability,
+      location: business.location,
+      price: business.price.toString(),
+    }));
+
+    return {
+      message: businesses.length
+        ? 'Businesses retrieved successfully'
+        : 'No Business Found in your Location',
+      data: businesses,
     };
   }
 
@@ -176,6 +194,7 @@ export class CustomerService {
 
     const services = await this.serviceRepository.find({
       relations: ['user', 'user.company', 'user.companyPreference'],
+      order: { id: 'ASC' }, // Order by ID to get first created service
     });
 
     let filteredServices = services;
@@ -298,12 +317,14 @@ export class CustomerService {
       });
     }
 
-    return {
-      message: filteredServices.length
-        ? 'Services filtered successfully'
-        : 'No Service Found for given filters',
-      data: filteredServices.map((service) => {
-        // Recalculate availability for each item in response
+    // Group services by company/business
+    const businessMap = new Map();
+
+    filteredServices.forEach((service) => {
+      const companyId = service.user.id;
+      
+      if (!businessMap.has(companyId)) {
+        // Initialize business data
         const companyPreference = service.user.companyPreference;
         let availability = 'Not available';
 
@@ -342,25 +363,41 @@ export class CustomerService {
           }
         }
 
-        return {
-          id: service.id,
-          serviceName: service.serviceName,
-          description: service.description,
-          location: service.location,
-          rateType: service.rateType,
-          price: service.price,
-          timeDuration: service.timeDuration,
-          numberOfRooms: service.numberOfRooms,
-          numberOfWindows: service.numberOfWindows,
-          imagePath: service.imageUrl,
+        businessMap.set(companyId, {
+          businessImage: service.user.company?.imageUrl || 'Unknown Business Profile Image',
+          coverImageUrl: service.user.company?.coverImageUrl || 'Unknown Cover Image',
           businessName: service.user.company?.businessName || 'Unknown',
-          businessType:
-            service.user.company?.businessType || 'Unknown Business Type',
-          businessProfileImage:
-            service.user.company?.imageUrl || 'Unknown Business Profile Image',
           availability,
-        };
-      }),
+          location: service.location, // Location of first created service
+          price: service.price, // Price of first created service (will be updated to lowest)
+          services: [service.price], // Track all prices to find lowest
+        });
+      } else {
+        // Update existing business data
+        const businessData = businessMap.get(companyId);
+        businessData.services.push(service.price);
+        
+        // Update price to lowest
+        const lowestPrice = Math.min(...businessData.services);
+        businessData.price = lowestPrice;
+      }
+    });
+
+    // Convert map to array and format response
+    const businesses = Array.from(businessMap.values()).map((business) => ({
+      businessImage: business.businessImage,
+      coverImageUrl: business.coverImageUrl,
+      businessName: business.businessName,
+      availability: business.availability,
+      location: business.location,
+      price: business.price.toString(),
+    }));
+
+    return {
+      message: businesses.length
+        ? 'Businesses filtered successfully'
+        : 'No Business Found for given filters',
+      data: businesses,
     };
   }
 
