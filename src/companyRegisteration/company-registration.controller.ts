@@ -301,4 +301,12 @@ async getCompanyRelatedIds(@Request() req) {
     );
   }
 
+  // Get all business types from registered companies
+  @Get('business-types')
+  @HttpCode(HttpStatus.OK)
+  async getAllBusinessTypes() {
+    console.log('Getting all business types');
+    return this.companyRegistrationService.getAllBusinessTypes();
+  }
+
 }

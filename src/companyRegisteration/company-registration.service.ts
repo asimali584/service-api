@@ -855,4 +855,29 @@ export class CompanyRegistrationService {
   };
 }
 
+  async getAllBusinessTypes() {
+    try {
+      // Get all companies and filter in JavaScript
+      const companies = await this.companyRepository.find({
+        select: ['businessType']
+      });
+
+      // Extract business types, filter out empty/null values, and get unique values
+      const businessTypes = [...new Set(
+        companies
+          .map(company => company.businessType)
+          .filter(type => type && type.trim() !== '')
+      )];
+
+      return {
+        message: 'Business types retrieved successfully',
+        data: businessTypes,
+        count: businessTypes.length,
+      };
+    } catch (error) {
+      console.error('Error retrieving business types:', error.message);
+      throw new InternalServerErrorException('Failed to retrieve business types');
+    }
+  }
+
 }
