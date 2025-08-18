@@ -17,6 +17,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { Twilio } from 'twilio';
 import { GoogleSignInDto } from './dto/google-signin.dto';
+import { AppleLoginDto } from './dto/apple-login.dto';
 
 @Injectable()
 export class AuthService {
@@ -251,6 +252,121 @@ async googleSignIn(googleSignInDto: GoogleSignInDto) {
     };
   }
 }
+
+  /**
+   * APPLE LOGIN: Mirror Google flow → upsert user, require phone verification if missing
+   */
+  async appleLogin(appleLoginDto: AppleLoginDto) {
+    const { email = null, fullName = null, password = null, role } = appleLoginDto;
+
+    let user: User | null = null;
+    if (email) {
+      user = await this.usersRepository.findOne({ where: { email } });
+    }
+
+    if (user) {
+      if (password) {
+        const isValid = await bcrypt.compare(password, user.password ?? '');
+        if (!isValid) {
+          throw new UnauthorizedException('Invalid Apple credentials');
+        }
+      }
+
+      if (user.role !== role) {
+        throw new BadRequestException(`Role mismatch: Account is registered as ${user.role}, but requested role is ${role}`);
+      }
+
+      if (!user.phoneNumber || !user.isPhoneVerified) {
+        return {
+          message: 'Phone verification required',
+          phone_verification_required: true,
+          isNewUser: false,
+          userId: user.id,
+        };
+      }
+
+      const payload = { email: user.email, sub: user.id, role: user.role };
+      return {
+        message: 'Apple Sign-In successful',
+        isNewUser: false,
+        access_token: this.jwtService.sign(payload),
+        user: { id: user.id, email: user.email, role: user.role },
+      };
+    }
+
+    const hashed = password ? await bcrypt.hash(password, 10) : null;
+    const newUser = this.usersRepository.create({
+      fullName: fullName ?? null,
+      email: email ?? null,
+      password: hashed ?? null,
+      role,
+      isVerified: true,
+      isPhoneVerified: false,
+    } as Partial<User>);
+    const savedUser = await this.usersRepository.save(newUser);
+
+    return {
+      message: 'Phone verification required',
+      isNewUser: true,
+      phone_verification_required: true,
+      userId: savedUser.id,
+    };
+  }
+
+  async sendOtpForAppleUser(userId: string, phoneNumber: string) {
+    const user = await this.usersRepository.findOne({ where: { id: Number(userId) } });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const existingPhone = await this.usersRepository.findOne({ where: { phoneNumber } });
+    if (existingPhone) {
+      throw new ConflictException('Phone number already exists');
+    }
+
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    await this.otpRepository.delete({ phoneNumber });
+
+    const otp = this.otpRepository.create({ phoneNumber, code } as Partial<Otp>);
+    await this.otpRepository.save(otp);
+
+    await this.twilioClient.messages.create({
+      body: `Your verification code is: ${code}`,
+      from: this.configService.get('TWILIO_PHONE_NUMBER'),
+      to: phoneNumber,
+    });
+
+    user.phoneNumber = phoneNumber;
+    await this.usersRepository.save(user);
+
+    return { message: `Verification code sent to ${phoneNumber}` };
+  }
+
+  async verifyOtpForAppleUser(userId: string, code: string) {
+    const user = await this.usersRepository.findOne({ where: { id: Number(userId) } });
+    if (!user || !user.phoneNumber) {
+      throw new NotFoundException('User or phone number not found');
+    }
+
+    const otp = await this.otpRepository.findOne({
+      where: { phoneNumber: user.phoneNumber, code },
+      order: { createdAt: 'DESC' },
+    });
+    if (!otp) {
+      throw new BadRequestException('Invalid or expired verification code');
+    }
+
+    user.isPhoneVerified = true;
+    await this.usersRepository.save(user);
+    await this.otpRepository.delete({ phoneNumber: user.phoneNumber });
+
+    const payload = { email: user.email, sub: user.id, role: user.role };
+    return {
+      message: 'Phone verification successful',
+      access_token: this.jwtService.sign(payload),
+      user: { id: user.id, email: user.email, role: user.role },
+    };
+  }
 
 async sendOtpForGoogleUser(userId: string, phoneNumber: string) {
  const user = await this.usersRepository.findOne({ where: { id: Number(userId) } });
